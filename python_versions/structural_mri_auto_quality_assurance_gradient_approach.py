@@ -19,7 +19,6 @@ from numpy import genfromtxt
 ##--------------------------------------------------------------------------------------------------------------------------------
 
 # read in the data array, which has only numbers with the first column the idc, second the age, third sex 0=male, 1=female, the rest are values
-dtidat = genfromtxt('.csv', delimiter=',')
 
 
 
@@ -35,3 +34,22 @@ dtidat = genfromtxt('.csv', delimiter=',')
 
 # Create an output datafile in the same order as the input path
 
+
+
+
+
+class QaGradient(object):
+
+    def __init__(self, path):
+        self.path = path
+
+
+
+    def run(self):
+        pass
+
+
+
+
+if __name__ == '__main__':
+    dtidat = genfromtxt('.csv', delimiter=',')
