@@ -32,7 +32,7 @@ a = data.shape
 
 # Look at the image in 2D
 img2d_cor = data[:,109,:]
-plt.imshow(img2d)
+plt.imshow(img2d_cor)
 plt.show()
 
 img2d_sag = data[91,:,:]
@@ -57,9 +57,26 @@ for x in xrange(0,181):
 		for z in xrange(81,161):
 			if itr[x,y,z] == 0 :
 				slabarr[x,y,z] = 1
+				if (x == 0) or (x == 180):
+					slabarr[x,y,z] = 2
 
 
 imgdemo = slabarr + itr 
 
+img2d_cor = slabarr[:,109,:]
+plt.imshow(img2d_cor)
+plt.show()
+
+img2d_ax = slabarr[:,:,91]
+plt.imshow(img2d_ax)
+plt.show()
+
+# Now create a nifti image with the slabarr dataset 
+
+img1 = nib.Nifti1Image(slabarr, np.eye(4))
+img1.get_data_dtype() == np.dtype(np.int16)
+img1.header.get_xyzt_units()
+
+img1.to_filename(os.path.join('/Users/tonya/Dropbox/Python/programs/auto_quality_assurace/python_versions/data','auto_qa_roi_definition.nii.gz'))
 
 

@@ -107,10 +107,23 @@ class QaGradient(object):
 
         subprocess.call(flrtcmd)
 
+    def fsl_invmat(self,in_file=None, out_file=None):
+        """ Runs FSL flirt with a selected list of options     
+
+        :param in_file: matrix transform
+        :param out_file: inverse matrix transform
+        :return: 
+    
+        convert_xfm -omat <outmat> -inverse <inmat>
+            """
+
+        invmat = [self.fsl_laucher, 'convert_xfm', '-omat', out_file, '-inverse', in_file, ]
+
+        subprocess.call(invmat)
 
     def afni_3dedge3(self, in_file=None, out_file=None):
         """Running Afni 3deges3
-
+        
         :param in_file: 
         :param out_file: 
         :param reference: 
