@@ -11,10 +11,12 @@
 
 __version__ = 0.1
 
-import numpy as np
-from numpy import genfromtxt
-import nipype
+import os
 
+import numpy as np
+import nipype
+import nibabel
+import subprocess
 
 """
 Load the paths
@@ -30,14 +32,35 @@ For each line in the region of interest, calculate the gradient along the edge
 Create an output datafile in the same order as the input path
 """
 
-
+PROJECT_DIR,file_name = os.path.split(__file__)
 
 
 
 class Qa(object):
 
     def __init__(self, path):
+
         self.path = path
+        self.image = None
+        self.t1_reference = os.path.join(PROJECT_DIR, 'data', 'MNI152_T1_1mm.nii.gz')
+        self.output_type = "NIFTI_GZ"
+
+        self.fsl_laucher = os.path.join(PROJECT_DIR, 'launch_fsl.sh')
+        self.afni_laucher = os.path.join(PROJECT_DIR, 'launch_afni.sh')
+
+
+    def flirt(self,in_file=None, out_file=None, reference=None):
+        """
+        
+        :param in_file: 
+        :param out_file: 
+        :param reference: 
+        :return: 
+        """
+
+        flrtcmd = [self.fsl_laucher, 'flirt', '-in', in_file, '-out', out_file, '-ref', reference]
+
+        subprocess.call(flrtcmd)
 
     def _register(self):
         """
@@ -47,9 +70,9 @@ class Qa(object):
 
         :return: 
         """
-        pass
 
-        
+        self.flirt(in_file=self.image)
+
 
     def _edges(self):
         """
@@ -70,30 +93,36 @@ class Qa(object):
 
 
     def run(self):
-        """
-        
-        :return: 
-        """
-        pass
 
-class Execute():
-    def __init__(self):
-        pass
+        self._register()
+        self._edges()
+        self._gradient()
+
+        return self.gradient
+
+
+
 
 if __name__ == '__main__':
     # read in the data array, which has only numbers with the first column the idc, second the age, third sex 0=male, 1=female, the rest are values
 
-    dtidat = genfromtxt('.csv', delimiter=',')
+#    dtidat = np.genfromtxt('.csv', delimiter=',')
+
+
+    inputs = '/home/poquirion/presentation/brainhack/ohbm_2017/projects/inputs'
+    t1_paths = os.listdir(inputs)
 
     gradiants = []
 
-    for d in dtidat:
-        path = d ## get that right
+    for t1_path in t1_paths:
+        # path = d ## get that right
 
-        qa = Qa(path)
+        qa = Qa(os.path.join(inputs, t1_path))
+
+        qa._register()
 
 
-        gradiants.append(qa.run())
+        # gradiants.append(qa.run())
 
     import pprint
     pprint.pprint(gradiants)
