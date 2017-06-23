@@ -58,7 +58,7 @@ class Qa(object):
         :return: 
         """
 
-        flrtcmd = [self.fsl_laucher, 'flirt', '-in', in_file, '-out', out_file, '-ref', reference]
+        flrtcmd = [self.fsl_laucher, 'flirt', '-in', in_file, '-ref', reference, '-omat' matrix_transform, '-out', out_file, '-searchrx' min_angle max_angle, '-searchry' min_angle max_angle, '-searchrz' min_angle max_angle, ]
 
         subprocess.call(flrtcmd)
 
