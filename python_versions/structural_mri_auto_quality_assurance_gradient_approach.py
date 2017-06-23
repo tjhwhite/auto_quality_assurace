@@ -34,10 +34,14 @@ PROJECT_DIR = os.path.dirname(__file__)
 
 
 class QaGradient(object):
+    """QaGradian is a class that take a structural image as an input and outputs the mean of edge gradian at 
+    the edge of the skull within an ROI
+    
+    """
 
     TMP_DIR = '/tmp'
 
-    def __init__(self, image_path, registered_path=None, edge_path=None, output_dir=None):
+    def __init__(self, image_path, registered_path=None, edge_path=None, output_dir=None, matrix_path=None):
 
         self.image_path = image_path
         self.uid = 33  # uuid.uuid4()
@@ -69,13 +73,24 @@ class QaGradient(object):
         else:
             self.edge_path = edge_path
 
+        if matrix_path is None:
+            self.matrix_path = os.path.join(self.ouput_dir,
+                                                'matrix_{}_{}'.
+                                                format(self.uid, os.path.basename(self.image_path)))
+            self.edge_path = '{}.mat'.format(os.path.splitext(self.edge_path)[0])
+
+        else:
+            self.edge_path = edge_path
+
+
         self.fsl_laucher = os.path.join(PROJECT_DIR, 'launch_fsl.sh')
         self.afni_laucher = os.path.join(PROJECT_DIR, 'launch_afni.csh')
 
         self.mean_gradient = None
 
 
-    def fsl_flirt(self,in_file=None, out_file=None, reference=None):
+    def fsl_flirt(self, in_file=None, out_file=None, reference=None, out_matrix = None, searchrx=(-90, 90),
+                  searchry=(-90, 90), searchrz=(-90, 90)):
         """ Runs FSL flirt with a selected list of options     
         
         :param in_file: 
@@ -84,9 +99,14 @@ class QaGradient(object):
         :return: 
         """
 
-        flrtcmd = [self.fsl_laucher, 'flirt', '-in', in_file, '-ref', reference, '-omat' matrix_transform, '-out', out_file, '-searchrx' min_angle max_angle, '-searchry' min_angle max_angle, '-searchrz' min_angle max_angle, ]
+
+        flrtcmd = [self.fsl_laucher, 'flirt', '-in', in_file, '-ref', reference, '-omat', out_matrix,
+                   '-out', out_file, '-searchrx', searchrx[0], searchrx[1],
+                   '-searchry', searchry[0], searchry[1],
+                   '-searchrz', searchrz[0], searchrz[1]]
 
         subprocess.call(flrtcmd)
+
 
     def afni_3dedge3(self, in_file=None, out_file=None):
         """Running Afni 3deges3
