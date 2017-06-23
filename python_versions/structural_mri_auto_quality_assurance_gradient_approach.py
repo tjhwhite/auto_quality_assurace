@@ -8,15 +8,13 @@
 # Location: 	Rotterdam
 
 #################################################################################################################################
-
 __version__ = 0.1
 
+import argparse
 import os
-
-import numpy as np
-import nipype
-import nibabel
 import subprocess
+import sys
+import uuid
 
 """
 Load the paths
@@ -32,25 +30,53 @@ For each line in the region of interest, calculate the gradient along the edge
 Create an output datafile in the same order as the input path
 """
 
-PROJECT_DIR,file_name = os.path.split(__file__)
+PROJECT_DIR = os.path.dirname(__file__)
 
 
+class QaGradient(object):
 
-class Qa(object):
+    TMP_DIR = '/tmp'
 
-    def __init__(self, path):
+    def __init__(self, image_path, registered_path=None, edge_path=None, output_dir=None):
 
-        self.path = path
+        self.image_path = image_path
+        self.uid = 33  # uuid.uuid4()
         self.image = None
         self.t1_reference = os.path.join(PROJECT_DIR, 'data', 'MNI152_T1_1mm.nii.gz')
-        self.output_type = "NIFTI_GZ"
+
+        if output_dir is None:
+            self.ouput_dir = self.TMP_DIR
+        else:
+            self.ouput_dir = output_dir
+
+        if registered_path is None:
+            self.registered_path = os.path.join(self.ouput_dir,
+                                                'registered_{}_{}'.
+                                                format(self.uid, os.path.basename(self.image_path)))
+            if self.registered_path.endswith('.nii'):
+                self.registered_path = '{}.gz'.format(self.registered_path)
+
+        else:
+            self.registered_path = registered_path
+
+        if edge_path is None:
+            self.edge_path = os.path.join(self.ouput_dir,
+                                                'edge_{}_{}'.
+                                                format(self.uid, os.path.basename(self.image_path)))
+            if self.edge_path.endswith('.nii'):
+                self.edge_path = '{}.gz'.format(self.edge_path)
+
+        else:
+            self.edge_path = edge_path
 
         self.fsl_laucher = os.path.join(PROJECT_DIR, 'launch_fsl.sh')
-        self.afni_laucher = os.path.join(PROJECT_DIR, 'launch_afni.sh')
+        self.afni_laucher = os.path.join(PROJECT_DIR, 'launch_afni.csh')
+
+        self.mean_gradient = None
 
 
-    def flirt(self,in_file=None, out_file=None, reference=None):
-        """
+    def fsl_flirt(self,in_file=None, out_file=None, reference=None):
+        """ Runs FSL flirt with a selected list of options     
         
         :param in_file: 
         :param out_file: 
@@ -62,6 +88,18 @@ class Qa(object):
 
         subprocess.call(flrtcmd)
 
+    def afni_3dedge3(self, in_file=None, out_file=None):
+        """Running Afni 3deges3
+
+        :param in_file: 
+        :param out_file: 
+        :param reference: 
+        :return: 
+        """
+        a_3dedge3 = [self.afni_laucher, '3dedge3', '-input', in_file, '-prefix', out_file]
+
+        subprocess.call(a_3dedge3)
+
     def _register(self):
         """
         Register the image to native space and use the inverse 
@@ -71,16 +109,17 @@ class Qa(object):
         :return: 
         """
 
-        self.flirt(in_file=self.image)
+        self.fsl_flirt(in_file=self.image_path, reference=self.t1_reference, out_file=self.registered_path)
 
+    def deform_mask(self):
+        pass
 
     def _edges(self):
         """
         Use AFNI's 3Dedge3D to determine the edges of the image
         :return: 
         """
-        pass
-
+        self.afni_3dedge3(in_file=self.registered_path, out_file=self.edge_path)
 
     def _gradient(self):
         """
@@ -91,38 +130,38 @@ class Qa(object):
         """
         pass
 
-
     def run(self):
 
         self._register()
         self._edges()
         self._gradient()
 
-        return self.gradient
+        return self.mean_gradient
 
 
+def main(args=None):
 
+    if args is None:
+        args = sys.argv[1:]
+
+    parser = argparse.ArgumentParser(description='QA gradient measures the mean of gradient '
+                                                 'of signal in a regions on the back of the head')
+
+    parser.add_argument("--inputs", "-i", type=str, required=True,
+                        help='A nifti file or a directory including nifti files')
+
+    parsed = parser.parse_args(args)
+
+    all_qa = []
+    if os.path.isfile(parsed.inputs):
+        all_qa.append(QaGradient(parsed.inputs))
+    elif os.path.dirname(parsed.inputs):
+        all_file = [nii for nii in os.listdir(parsed.inputs) if nii.endswith(".nii.gz") or nii.endswith(".nii")]
+        for f in all_file:
+            all_qa.append(QaGradient(os.path.join(parsed.inputs, f)))
+
+    for qa in all_qa:
+        qa.run()
 
 if __name__ == '__main__':
-    # read in the data array, which has only numbers with the first column the idc, second the age, third sex 0=male, 1=female, the rest are values
-
-#    dtidat = np.genfromtxt('.csv', delimiter=',')
-
-
-    inputs = '/home/poquirion/presentation/brainhack/ohbm_2017/projects/inputs'
-    t1_paths = os.listdir(inputs)
-
-    gradiants = []
-
-    for t1_path in t1_paths:
-        # path = d ## get that right
-
-        qa = Qa(os.path.join(inputs, t1_path))
-
-        qa._register()
-
-
-        # gradiants.append(qa.run())
-
-    import pprint
-    pprint.pprint(gradiants)
+    main()
