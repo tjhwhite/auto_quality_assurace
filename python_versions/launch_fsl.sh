@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 ### YOUR FSL PATH and version HERE
-FSLDIR=/usr/share/fsl/5.0/
+FSLDIR=/usr/local/fsl
 ### Nothing else to do
 
 . ${FSLDIR}/etc/fslconf/fsl.sh
@@ -9,6 +9,4 @@ export FSLDIR
 
 
 $*
-
-
 
