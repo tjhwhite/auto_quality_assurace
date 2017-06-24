@@ -237,6 +237,9 @@ def main(args=None):
     parser.add_argument("--inputs", "-i", type=str, required=True,
                         help='A nifti file or a directory including nifti files')
 
+    parser.add_argument("--output", "-o", type=str, required=True,
+                        help='A directory where derivative files are saved')
+
     parsed = parser.parse_args(args)
 
     all_qa = []
