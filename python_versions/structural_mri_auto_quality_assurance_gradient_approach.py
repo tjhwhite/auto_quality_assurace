@@ -45,7 +45,7 @@ class QaGradient(object):
     def __init__(self, original_image_path, registered_image_path=None, edge_path=None, output_dir=None,
                  matrix_path=None, searchrx=(-90, 90), searchry=(-90, 90), searchrz=(-90, 90),
                  roi_user_space=None, rev_matrix_path=None, standard_space_image_path=None,
-                 verbose=1, roi_standard_space=None, clean_intermediate=True):
+                 verbose=1, roi_standard_space=None, clean_intermediate=True, bool_edge_path=None):
 
         self.original_image_path = original_image_path
         self.uid = 2  # uuid.uuid4()
@@ -78,6 +78,13 @@ class QaGradient(object):
                                           format(self.uid, os.path.basename(self.original_image_path)))
             if self.edge_path.endswith('.nii'):
                 self.edge_path = '{}.gz'.format(self.edge_path)
+
+        if bool_edge_path is None:
+            self.bool_edge_path = os.path.join(self.ouput_dir,
+                                                'bool_edge_{}_{}'.
+                                          format(self.uid, os.path.basename(self.original_image_path)))
+            if self.bool_edge_path.endswith('.nii'):
+                self.bool_edge_path = '{}.gz'.format(self.bool_edge_path)
 
         else:
             self.edge_path = edge_path
@@ -115,7 +122,6 @@ class QaGradient(object):
         self.searchrz = searchrz
 
         self.clean_intermediate = clean_intermediate
-
         self.mean_gradient = None
 
     def clean(self):
@@ -214,18 +220,22 @@ class QaGradient(object):
                        applyxfm=True, reference=self.original_image_path)
 
     def binarize(self, image_path, threshold=.3):
-        """ Make a 0 1 mask 1 is above a threshold, modify the file in place
+        """ Make a 0 1 mask 1 is above a threshold, creates new file
         
         :param image_path: math to an image
         :param threshold: Fraction of image.max value
-        :return: 
+        :return: the new file path
         """
 
         image = nibabel.load(image_path)
         data = image.get_data()
         new_data = (data > threshold*data.max()).astype(int)
+
         new_image = nibabel.Nifti2Image(new_data, image.affine)
-        new_image.to_filename(image_path)
+        new_image.to_filename(self.bool_edge_path)
+
+        return new_image.get_filename
+
 
 
     def _edges(self):
@@ -235,22 +245,62 @@ class QaGradient(object):
         """
         logging.info('get edges on {}'.format(self.registered_registered_path))
         self.afni_3dedge3(in_file=self.original_image_path, out_file=self.edge_path)
-        self.binarize(self.edge_path)
 
-    def _gradient(self):
+    def _gradient(self, img_path_orig, img_path_edge, img_path_roi):
         """
         For each line in the region of interest, calculate the gradient
         along the edge
-
+        
         :return: 
         """
-        pass
+        logging.info('Starting gradiant computing')
+
+        img = nibabel.load(img_path_orig).get_data()
+        roi = nibabel.load(img_path_roi).get_data()
+        edge = nibabel.load(img_path_edge).get_data()
+
+        ## TODO MAKE THAT CODE PYTHONIC!
+        simg = img.shape
+
+        third = int(roi.shape[0] / 3)
+
+        xmin_sum = roi[0:third].sum(0)
+        xmax_sum = roi[2 * third:-1].sum(0)
+
+        vals_left = 0
+        vals_right = 0
+        count_left = 0
+        count_right = 0
+
+        for y in range(0, roi.shape[1]):
+            for z in range(0, roi.shape[2]):
+                if xmin_sum[y, z] > 0:
+                    icount = 0
+                    while  not edge[icount, y, z]:
+                        icount = icount + 1
+                    if icount > 4:
+                        vals_left = vals_left + (img[icount + 1, y, z] - img[icount - 4, y, z])
+                        count_left = count_left + 1
+                if xmax_sum[y, z] > 0:
+                    icount = roi.shape[0] - 1
+                    while not edge[icount, y, z]:
+                        icount = icount - 1
+                    if roi.shape[0] - icount > 5:
+                        vals_right = vals_right + (img[icount - 1, y, z] - img[icount + 4, y, z])
+                        count_right = count_right + 1
+
+        # Calculate the gradient value for the right and the left side of the brain
+        grad_left = vals_left / count_left
+        grad_right = vals_right / count_right
+
+        self.mean_gradient = ((grad_left + grad_right)/2).astype(float)
 
     def run(self):
 
-        self._register()
-        self._edges()
-        self._gradient()
+        # self._register()
+        # self._edges()
+        # self.bool_edge_path = self.binarize(self.edge_path)
+        self._gradient(self.original_image_path, self.edge_path, self.roi_user_space)
 
         if self.clean_intermediate:
             self.clean()
@@ -261,7 +311,7 @@ class QaGradient(object):
 def main(args=None):
 
     FORMAT = "%(levelname)7s --%(lineno)5s %(funcName)25s():  %(message)s"
-    logging.basicConfig(level=logging.DEBUG, format=FORMAT, stream=sys.stdout)
+    # logging.basicConfig(level=logging.DEBUG, format=FORMAT, stream=sys.stdout)
 
     if args is None:
         args = sys.argv[1:]
@@ -294,7 +344,9 @@ def main(args=None):
             all_qa.append(QaGradient(os.path.join(inputs, f), output_dir=output, clean_intermediate=clean))
 
     for qa in all_qa:
-        qa.run()
+        print("Results {} mean gradian is {}".format(os.path.basename(qa.original_image_path),
+                                                     qa.run()))
+
 
 if __name__ == '__main__':
     main()
