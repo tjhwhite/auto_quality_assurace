@@ -1,8 +1,9 @@
 #!/usr/bin/env tcsh
 ### YOUR AFNIN BIN PATH HERE
-set AFNI_BIN = /home/poquirion/abin
-
+set AFNI_BIN = $HOME/abin
 #### NOTHING ELSE TO SET
+
+source $HOME/.config/qagradient/afni
 
 
 set path = ( $path  $AFNI_BIN  )
