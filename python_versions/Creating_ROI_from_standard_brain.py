@@ -54,11 +54,11 @@ slabarr = np.zeros([182,218,182])
 
 for x in xrange(0,181):
 	for y in xrange(60,160):
-		for z in xrange(81,161):
+		for z in xrange(61,141):
 			if itr[x,y,z] == 0 :
 				slabarr[x,y,z] = 1
 				if (x == 0) or (x == 180):
-					slabarr[x,y,z] = 2
+					slabarr[x,y,z] = 10
 
 
 imgdemo = slabarr + itr 
@@ -77,6 +77,6 @@ img1 = nib.Nifti1Image(slabarr, np.eye(4))
 img1.get_data_dtype() == np.dtype(np.int16)
 img1.header.get_xyzt_units()
 
-img1.to_filename(os.path.join('/Users/tonya/Dropbox/Python/programs/auto_quality_assurace/python_versions/data','auto_qa_roi_definition.nii.gz'))
+img1.to_filename(os.path.join('/Users/tonya/Dropbox/Python/programs/auto_quality_assurace/python_versions/data','auto_qa_roi_definition_lower_slab.nii.gz'))
 
 
